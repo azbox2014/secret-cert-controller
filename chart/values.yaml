@@ -1,0 +1,34 @@
+image:
+  repository: your-dockerhub/secret-cert-controller
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+imagePullSecrets: []
+# - name: regcred
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+controller:
+  # 证书中心地址
+  certServer: "http://cert-server"
+
+  # 每多久刷新缓存（秒）
+  cacheRefreshInterval: 5
+
+  # reconcile 重试周期（秒）
+  reconcileInterval: 3600
+
+  # HTTP 超时（秒）
+  httpTimeout: 5
+
+leaderElection:
+  enabled: false
+  id: "secret-cert-controller"

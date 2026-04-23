@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "secret-cert-controller.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "secret-cert-controller.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "secret-cert-controller.name" . }}
+    spec:
+      serviceAccountName: {{ include "secret-cert-controller.fullname" . }}
+
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{- end }}
+
+      containers:
+      - name: controller
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+        env:
+        - name: CERT_SERVER
+          value: "{{ .Values.controller.certServer }}"
+        - name: CACHE_REFRESH_INTERVAL
+          value: "{{ .Values.controller.cacheRefreshInterval }}"
+        - name: RECONCILE_INTERVAL
+          value: "{{ .Values.controller.reconcileInterval }}"
+        - name: HTTP_TIMEOUT
+          value: "{{ .Values.controller.httpTimeout }}"
+
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
