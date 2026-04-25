@@ -9,12 +9,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -24,19 +27,23 @@ type SecretReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-const (
-	AnnManaged = "cert.qffssd.com/managed"
-	AnnDomain  = "cert.qffssd.com/domain"
-	AnnFP      = "cert.qffssd.com/fingerprint"
-
-)
 
 var (
-	certServer = getEnv("CERT_SERVER", "http://cert-server")
-	cacheInterval = time.Duration(getEnvInt("CACHE_REFRESH_INTERVAL", 5)) * time.Second
-	reconcileInterval = time.Duration(getEnvInt("RECONCILE_INTERVAL", 3600)) * time.Second
-	httpTimeout = time.Duration(getEnvInt("HTTP_TIMEOUT", 5)) * time.Second
+	certServer           = getEnv("CERT_SERVER", "http://cert-server")
+	cacheInterval        = time.Duration(getEnvInt("CACHE_REFRESH_INTERVAL", 5)) * time.Second
+	reconcileInterval    = time.Duration(getEnvInt("RECONCILE_INTERVAL", 3600)) * time.Second
+	httpTimeout          = time.Duration(getEnvInt("HTTP_TIMEOUT", 5)) * time.Second
+	annPrefix            = getEnv("ANN_PREFIX", "cert.example.com")
+	annManaged   string // = annPrefix + "/managed"
+	annDomain    string // = annPrefix + "/domain"
+	annFP        string // = annPrefix + "/fingerprint"
 )
+
+func init() {
+	annManaged = annPrefix + "/managed"
+	annDomain = annPrefix + "/domain"
+	annFP = annPrefix + "/fingerprint"
+}
 
 func getEnv(key string, def string) string {
 	v := os.Getenv(key)
@@ -170,11 +177,11 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	ann := secret.Annotations
-	if ann == nil || ann[AnnManaged] != "true" {
+	if ann == nil || ann[annManaged] != "true" {
 		return ctrl.Result{}, nil
 	}
 
-	domain := ann[AnnDomain]
+	domain := ann[annDomain]
 	if domain == "" {
 		return ctrl.Result{}, nil
 	}
@@ -191,7 +198,13 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	certData := val.(CertData)
 
-	if ann[AnnFP] == certData.Fingerprint {
+	// 检查是否需要立即同步：
+	// 1. 新添加的 secret（没有 fingerprint）
+	// 2. 已有 secret 新添加了 annotation（没有 fingerprint）
+	// 3. 证书指纹发生变化
+	needImmediateSync := ann[annFP] == "" || ann[annFP] != certData.Fingerprint
+
+	if !needImmediateSync {
 		return ctrl.Result{RequeueAfter: reconcileInterval}, nil
 	}
 
@@ -205,7 +218,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if secret.Annotations == nil {
 		secret.Annotations = map[string]string{}
 	}
-	secret.Annotations[AnnFP] = certData.Fingerprint
+	secret.Annotations[annFP] = certData.Fingerprint
 
 	if err := r.Update(ctx, &secret); err != nil {
 		return ctrl.Result{}, err
@@ -222,9 +235,9 @@ func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&corev1.Secret{}).
 		WithEventFilter(predicate.NewPredicateFuncs(func(obj client.Object) bool {
 			ann := obj.GetAnnotations()
-			return ann != nil && ann[AnnManaged] == "true"
+			return ann != nil && ann[annManaged] == "true"
 		})).
-		WithOptions(ctrl.Options{
+		WithOptions(controller.Options{
 			MaxConcurrentReconciles: 5,
 		}).
 		Complete(r)

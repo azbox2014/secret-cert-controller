@@ -20,6 +20,9 @@ controller:
   # 证书中心地址
   certServer: "http://cert-server"
 
+  # 注解前缀
+  annPrefix: "cert.example.com"
+
   # 每多久刷新缓存（秒）
   cacheRefreshInterval: 5
 
