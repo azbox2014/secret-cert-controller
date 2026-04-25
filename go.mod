@@ -1,6 +1,6 @@
 module example.com/secret-cert-controller
 
-go 1.22
+go 1.22.0
 
 require (
 	k8s.io/api v0.30.1
