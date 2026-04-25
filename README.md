@@ -79,6 +79,7 @@ helm install secret-cert-controller ./chart \
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
 | `controller.certServer` | `http://cert-server` | 证书服务器地址 |
+| `controller.annPrefix` | `cert.example.com` | 注解前缀，可自定义 |
 | `controller.cacheRefreshInterval` | `5` | 证书缓存刷新间隔（秒） |
 | `controller.reconcileInterval` | `3600` | reconcile 间隔（秒） |
 | `controller.httpTimeout` | `5` | HTTP 请求超时（秒） |
@@ -95,6 +96,7 @@ helm install secret-cert-controller ./chart \
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `CERT_SERVER` | `http://cert-server` | 证书服务器地址 |
+| `ANN_PREFIX` | `cert.example.com` | 注解前缀 |
 | `CACHE_REFRESH_INTERVAL` | `5` | 缓存刷新间隔（秒） |
 | `RECONCILE_INTERVAL` | `3600` | reconcile 间隔（秒） |
 | `HTTP_TIMEOUT` | `5` | HTTP 超时（秒） |
