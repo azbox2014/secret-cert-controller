@@ -34,6 +34,8 @@ spec:
           value: "{{ .Values.controller.reconcileInterval }}"
         - name: HTTP_TIMEOUT
           value: "{{ .Values.controller.httpTimeout }}"
+        - name: ANN_PREFIX
+          value: "{{ .Values.controller.annPrefix }}"
 
         resources:
 {{ toYaml .Values.resources | indent 10 }}
