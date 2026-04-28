@@ -33,7 +33,6 @@ jobs:
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PWD }}
 
-      # 构建并推送镜像
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
