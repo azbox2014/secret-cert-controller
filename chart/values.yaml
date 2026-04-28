@@ -1,6 +1,6 @@
 image:
   repository: your-dockerhub/secret-cert-controller
-  tag: latest
+  tag: 0.0.1
   pullPolicy: IfNotPresent
 
 replicaCount: 1
