@@ -15,6 +15,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -43,6 +44,9 @@ func init() {
 	annManaged = annPrefix + "/managed"
 	annDomain = annPrefix + "/domain"
 	annFP = annPrefix + "/fingerprint"
+	
+	klog.Infof("Secret cert controller initialized with prefix: %s", annPrefix)
+	klog.Infof("Cache interval: %v, Reconcile interval: %v", cacheInterval, reconcileInterval)
 }
 
 func getEnv(key string, def string) string {
@@ -105,11 +109,16 @@ func validateKey(keyPEM string) error {
 
 // ---------- FETCH ----------
 func fetchCert(domain string) (CertData, error) {
-	certURL := fmt.Sprintf("%s/cert/%s/fullchain.pem", certServer, domain)
-	keyURL := fmt.Sprintf("%s/cert/%s/privkey.pem", certServer, domain)
+	certURL := fmt.Sprintf("%s/%s/fullchain.pem", certServer, domain)
+	keyURL := fmt.Sprintf("%s/%s/privkey.pem", certServer, domain)
+	
+	klog.V(4).Infof("Fetching certificate for domain: %s", domain)
+	klog.V(5).Infof("Certificate URL: %s", certURL)
+	klog.V(5).Infof("Key URL: %s", keyURL)
 
 	resp, err := httpClient.Get(certURL)
 	if err != nil {
+		klog.Errorf("Failed to fetch certificate from %s: %v", certURL, err)
 		return CertData{}, err
 	}
 	defer resp.Body.Close()
@@ -118,6 +127,7 @@ func fetchCert(domain string) (CertData, error) {
 
 	resp2, err := httpClient.Get(keyURL)
 	if err != nil {
+		klog.Errorf("Failed to fetch private key from %s: %v", keyURL, err)
 		return CertData{}, err
 	}
 	defer resp2.Body.Close()
@@ -128,16 +138,21 @@ func fetchCert(domain string) (CertData, error) {
 	keyStr := string(keyBytes)
 
 	if err := validateCert(certStr); err != nil {
+		klog.Errorf("Certificate validation failed for domain %s: %v", domain, err)
 		return CertData{}, err
 	}
 	if err := validateKey(keyStr); err != nil {
+		klog.Errorf("Key validation failed for domain %s: %v", domain, err)
 		return CertData{}, err
 	}
+	
+	fp := fingerprint(certStr)
+	klog.V(3).Infof("Successfully fetched certificate for domain %s, fingerprint: %s", domain, fp)
 
 	return CertData{
 		Cert:        certStr,
 		Key:         keyStr,
-		Fingerprint: fingerprint(certStr),
+		Fingerprint: fp,
 	}, nil
 }
 
@@ -167,33 +182,44 @@ func startCacheRefresher(ctx context.Context) {
 
 // ---------- RECONCILE ----------
 func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	klog.V(3).Infof("Starting reconciliation for secret: %s/%s", req.Namespace, req.Name)
+
 	var secret corev1.Secret
 	if err := r.Get(ctx, req.NamespacedName, &secret); err != nil {
+		klog.V(2).Infof("Secret %s/%s not found, ignoring: %v", req.Namespace, req.Name, err)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if secret.Type != corev1.SecretTypeTLS {
+		klog.V(4).Infof("Secret %s/%s is not TLS type, skipping", req.Namespace, req.Name)
 		return ctrl.Result{}, nil
 	}
 
 	ann := secret.Annotations
 	if ann == nil || ann[annManaged] != "true" {
+		klog.V(4).Infof("Secret %s/%s not managed by this controller, skipping", req.Namespace, req.Name)
 		return ctrl.Result{}, nil
 	}
 
 	domain := ann[annDomain]
 	if domain == "" {
+		klog.Warningf("Secret %s/%s has managed annotation but no domain specified", req.Namespace, req.Name)
 		return ctrl.Result{}, nil
 	}
 
+	klog.Infof("Processing managed TLS secret %s/%s for domain: %s", req.Namespace, req.Name, domain)
+
 	val, ok := certCache.Load(domain)
 	if !ok {
+		klog.Infof("Certificate for domain %s not in cache, fetching...", domain)
 		cert, err := fetchCert(domain)
 		if err != nil {
+			klog.Errorf("Failed to fetch certificate for domain %s: %v", domain, err)
 			return ctrl.Result{RequeueAfter: time.Minute}, err
 		}
 		certCache.Store(domain, cert)
 		val = cert
+		klog.Infof("Cached certificate for domain %s, fingerprint: %s", domain, cert.Fingerprint)
 	}
 
 	certData := val.(CertData)
@@ -205,7 +231,17 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	needImmediateSync := ann[annFP] == "" || ann[annFP] != certData.Fingerprint
 
 	if !needImmediateSync {
+		klog.V(3).Infof("Certificate for domain %s is up to date, fingerprint: %s", domain, certData.Fingerprint)
 		return ctrl.Result{RequeueAfter: reconcileInterval}, nil
+	}
+
+	action := "created"
+	if ann[annFP] != "" {
+		klog.Infof("Certificate updated for domain %s, old fingerprint: %s, new fingerprint: %s", 
+			domain, ann[annFP], certData.Fingerprint)
+		action = "updated"
+	} else {
+		klog.Infof("Creating certificate for domain %s, fingerprint: %s", domain, certData.Fingerprint)
 	}
 
 	if secret.Data == nil {
@@ -221,9 +257,11 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	secret.Annotations[annFP] = certData.Fingerprint
 
 	if err := r.Update(ctx, &secret); err != nil {
+		klog.Errorf("Failed to update secret %s/%s: %v", req.Namespace, req.Name, err)
 		return ctrl.Result{}, err
 	}
 
+	klog.Infof("Successfully %s TLS secret %s/%s for domain %s", action, req.Namespace, req.Name, domain)
 	return ctrl.Result{RequeueAfter: reconcileInterval}, nil
 }
 
