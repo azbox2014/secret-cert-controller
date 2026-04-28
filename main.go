@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
+	"k8s.io/klog/v2/klogr"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -14,6 +15,7 @@ import (
 )
 
 func main() {
+	ctrl.SetLogger(klogr.New())
 	klog.Info("Starting secret-cert-controller...")
 
 	scheme := runtime.NewScheme()
