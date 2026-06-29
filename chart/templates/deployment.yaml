@@ -36,6 +36,9 @@ spec:
           value: "{{ .Values.controller.httpTimeout }}"
         - name: ANN_PREFIX
           value: "{{ .Values.controller.annPrefix }}"
-
+          {{- if .Values.controller.httpProxyUrl }}
+        - name: HTTPPROXY_URL
+          value: "{{ .Values.controller.httpProxyUrl }}"
+          {{- end }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}

@@ -1,6 +1,6 @@
 image:
-  repository: your-dockerhub/secret-cert-controller
-  tag: 0.0.4
+  repository: registry.cn-beijing.aliyuncs.com/osc-org/secret-cert-controller
+  tag: 0.0.5
   pullPolicy: IfNotPresent
 
 replicaCount: 1
@@ -31,6 +31,8 @@ controller:
 
   # HTTP 超时（秒）
   httpTimeout: 5
+
+  httpProxyUrl: ""
 
 leaderElection:
   enabled: false
