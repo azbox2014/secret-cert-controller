@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"sync"
@@ -69,6 +70,21 @@ func getEnvInt(key string, def int) int {
 // ---------- HTTP ----------
 var httpClient = &http.Client{
 	Timeout: httpTimeout,
+}
+
+func init() {
+	proxy := os.Getenv("HTTPPROXY_URL")
+	if proxy != "" {
+		proxyURL, err := url.Parse(proxy)
+		if err != nil {
+			klog.Warningf("Invalid proxy URL %q: %v, will connect directly", proxy, err)
+		} else {
+			httpClient.Transport = &http.Transport{
+				Proxy: http.ProxyURL(proxyURL),
+			}
+			klog.Infof("Using proxy %s for HTTP requests", proxy)
+		}
+	}
 }
 
 // ---------- CACHE ----------
