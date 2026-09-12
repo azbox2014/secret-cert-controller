@@ -1,6 +1,6 @@
 image:
   repository: registry.cn-beijing.aliyuncs.com/osc-org/secret-cert-controller
-  tag: 0.0.6
+  tag: 0.0.7
   pullPolicy: IfNotPresent
 
 replicaCount: 1
