@@ -75,8 +75,8 @@ jobs:
             ghcr.io/${{ github.actor }}/secret-cert-controller:latest
             registry.cn-beijing.aliyuncs.com/osc-org/secret-cert-controller:${{ steps.get_version.outputs.VERSION }}
             registry.cn-beijing.aliyuncs.com/osc-org/secret-cert-controller:latest
-            ${{ secrets.QCR_REGISTRY }}/base/secret-cert-controller:${{ steps.get_version.outputs.VERSION }}
-            ${{ secrets.QCR_REGISTRY }}/base/secret-cert-controller:latest
+            ${{ secrets.QCR_REGISTRY }}/osc-org/secret-cert-controller:${{ steps.get_version.outputs.VERSION }}
+            ${{ secrets.QCR_REGISTRY }}/osc-org/secret-cert-controller:latest
 
   publish-chart:
     needs: build
