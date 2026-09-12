@@ -98,9 +98,20 @@ jobs:
       - name: Login to QCR OCI registry
         run: helm registry login ${{ secrets.QCR_REGISTRY }} -u ${{ secrets.QCR_USER }} -p ${{ secrets.QCR_PASS }}
 
-      - name: Package and push Helm chart
-        run: |
-          helm package ./chart
-          helm push secret-cert-controller-${VERSION}.tgz oci://${{ secrets.QCR_REGISTRY }}/helm-org
+      - name: Login to GitHub Container Registry
+        run: helm registry login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GH_TOKEN }}
+
+      - name: Package Helm chart
+        run: helm package ./chart
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Push Helm chart to QCR
+        run: helm push secret-cert-controller-${VERSION}.tgz oci://${{ secrets.QCR_REGISTRY }}/helm-org
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Push Helm chart to GHCR
+        run: helm push secret-cert-controller-${VERSION}.tgz oci://ghcr.io/${{ github.actor }}/helm-org
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
