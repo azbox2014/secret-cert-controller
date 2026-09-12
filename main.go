@@ -32,21 +32,23 @@ func main() {
 	}
 	klog.Info("Controller manager created successfully")
 
-	klog.Info("Setting up SecretReconciler...")
-	if err = (&controllers.SecretReconciler{
-		Client: mgr.GetClient(),
-		Scheme: scheme,
-	}).SetupWithManager(mgr); err != nil {
-		klog.Errorf("Failed to setup SecretReconciler: %v", err)
+	klog.Info("Setting up cert Syncer...")
+	if err := mgr.Add(&controllers.Syncer{
+		Client:     mgr.GetClient(),
+		Reader:     mgr.GetAPIReader(),
+		ConfigPath: controllers.ConfigPath,
+		Interval:   controllers.SyncInterval,
+	}); err != nil {
+		klog.Errorf("Failed to add Syncer: %v", err)
 		os.Exit(1)
 	}
-	klog.Info("SecretReconciler setup completed successfully")
+	klog.Info("Syncer setup completed successfully")
 
 	klog.Info("Starting controller manager...")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		klog.Errorf("Failed to start controller manager: %v", err)
 		os.Exit(1)
 	}
-	
+
 	klog.Info("Controller manager stopped gracefully")
 }

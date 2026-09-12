@@ -1,6 +1,6 @@
 image:
   repository: registry.cn-beijing.aliyuncs.com/osc-org/secret-cert-controller
-  tag: 0.0.5
+  tag: 0.0.6
   pullPolicy: IfNotPresent
 
 replicaCount: 1
@@ -20,20 +20,31 @@ controller:
   # 证书中心地址
   certServer: "http://cert-server"
 
-  # 注解前缀
-  annPrefix: "cert.example.com"
-
-  # 每多久刷新缓存（秒）
-  cacheRefreshInterval: 5
-
-  # reconcile 重试周期（秒）
-  reconcileInterval: 3600
-
   # HTTP 超时（秒）
   httpTimeout: 5
 
+  # 出站代理（留空则不使用代理）
   httpProxyUrl: ""
 
-leaderElection:
-  enabled: false
-  id: "secret-cert-controller"
+  configSync:
+    # 同步周期（秒）：每隔多久重读配置文件并调谐一次
+    syncInterval: 60
+
+    # 配置文件在容器内的挂载目录
+    mountPath: /etc/cert-sync
+
+    # 内联同步配置：按命名空间列出域名
+    # Secret 名称规则：域名中的 . 替换为 - 后追加 -tls
+    #   example.com     -> example-com-tls
+    #   www.example.com -> www-example-com-tls
+    # 示例：
+    # sync:
+    #   - namespace: default
+    #     domains:
+    #       - example.com
+    #       - www.example.com
+    config: |-
+      sync: []
+
+    # 使用已有的 ConfigMap（需包含 config.yaml 键）；设置后忽略上面的内联 config，不再创建 ConfigMap
+    existingConfigMap: ""

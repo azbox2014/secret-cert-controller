@@ -1,0 +1,10 @@
+{{- if not .Values.controller.configSync.existingConfigMap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "secret-cert-controller.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+data:
+  config.yaml: |
+{{- .Values.controller.configSync.config | default "sync: []" | nindent 4 }}
+{{- end }}

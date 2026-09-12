@@ -28,17 +28,26 @@ spec:
         env:
         - name: CERT_SERVER
           value: "{{ .Values.controller.certServer }}"
-        - name: CACHE_REFRESH_INTERVAL
-          value: "{{ .Values.controller.cacheRefreshInterval }}"
-        - name: RECONCILE_INTERVAL
-          value: "{{ .Values.controller.reconcileInterval }}"
         - name: HTTP_TIMEOUT
           value: "{{ .Values.controller.httpTimeout }}"
-        - name: ANN_PREFIX
-          value: "{{ .Values.controller.annPrefix }}"
+        - name: CONFIG_PATH
+          value: "{{ .Values.controller.configSync.mountPath }}/config.yaml"
+        - name: SYNC_INTERVAL
+          value: "{{ .Values.controller.configSync.syncInterval }}"
           {{- if .Values.controller.httpProxyUrl }}
         - name: HTTPPROXY_URL
           value: "{{ .Values.controller.httpProxyUrl }}"
           {{- end }}
+
+        volumeMounts:
+        - name: config
+          mountPath: {{ .Values.controller.configSync.mountPath }}
+          readOnly: true
+
         resources:
 {{ toYaml .Values.resources | indent 10 }}
+
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Values.controller.configSync.existingConfigMap | default (printf "%s-config" (include "secret-cert-controller.fullname" .)) }}
