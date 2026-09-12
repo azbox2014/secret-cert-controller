@@ -59,6 +59,7 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
+          provenance: false
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/secret-cert-controller:${{ steps.get_version.outputs.VERSION }}
             ${{ secrets.DOCKERHUB_USERNAME }}/secret-cert-controller:latest
