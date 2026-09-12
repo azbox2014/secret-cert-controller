@@ -3,6 +3,12 @@ name: Build & Push Go Docker Image
 on:
   push:
     tags: [ v* ]
+  workflow_dispatch:
+    inputs:
+      debug_repo:
+        description: "诊断用 OCI 仓库路径（不含 chart 名）"
+        default: "helm-org"
+        required: true
 
 jobs:
   build:
@@ -116,3 +122,34 @@ jobs:
         run: helm push secret-cert-controller-${VERSION}.tgz oci://ghcr.io/${{ github.actor }}/helm-org
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+  diagnose-qcr:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+
+      - name: Login to QCR OCI registry
+        run: |
+          echo "${{ secrets.QCR_PASS }}" | helm registry login ${{ secrets.QCR_REGISTRY }} -u ${{ secrets.QCR_USER }} --password-stdin --debug
+
+      - name: Package Helm chart
+        run: helm package ./chart
+
+      - name: Probe registry API
+        run: |
+          echo "=== /v2/ ==="
+          curl -sS -i -u "${{ secrets.QCR_USER }}:${{ secrets.QCR_PASS }}" https://${{ secrets.QCR_REGISTRY }}/v2/ | head -20
+          echo "=== tags list helm-org/secret-cert-controller ==="
+          curl -sS -i -u "${{ secrets.QCR_USER }}:${{ secrets.QCR_PASS }}" \
+            "https://${{ secrets.QCR_REGISTRY }}/v2/helm-org/secret-cert-controller/tags/list" | head -20
+
+      - name: Push chart with debug
+        run: |
+          helm push secret-cert-controller-*.tgz oci://${{ secrets.QCR_REGISTRY }}/${{ github.event.inputs.debug_repo }} --debug
