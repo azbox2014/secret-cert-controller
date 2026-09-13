@@ -15,11 +15,11 @@
 ## What is this?
 
 <!-- agentwiki:prose slot="what-is-this" status="fresh" facts-hash="1d68f3cc2eb7" hint="Explain in 2-3 paragraphs what this project is, who it is for, and why it exists. Use the identity facts and the repository README as sources." -->
-这是一个用 Go 1.22 + controller-runtime v0.18 编写的 Kubernetes operator，作用是**按配置文件把外部证书服务器上的 TLS 证书同步成集群内的 `kubernetes.io/tls` Secret**。配置按命名空间列出域名（`controllers/config.go:48` 的 `Config`），控制器周期性地在各命名空间下创建/更新证书 Secret，供 Ingress、TLSStore 或工作负载直接挂载。它以 Helm chart 形式交付，由使用方在自己的平台上通过 HelmRelease 部署。
+这是一个用 Go 1.22 + controller-runtime v0.18 编写的 Kubernetes operator，作用是**按配置文件把外部证书服务器上的 TLS 证书同步成集群内的 `kubernetes.io/tls` Secret**。配置按命名空间列出域名（`controllers/config.go:48` 的 `Config`），控制器周期性地在各命名空间下创建/更新证书 Secret，供 Ingress、TLSStore 或工作负载直接挂载。它以 Helm chart 形式交付，由使用方在自己的平台上通过 HelmRelease 按 values 提供的配置部署。
 
-早期版本（chart 0.0.4/0.0.5）靠给 TLS Secret 打 `<prefix>/managed=true`、`<prefix>/domain=<域名>` 注解来被动触发；0.0.6 起（提交 `2af52c7`）整体改为**配置文件主动同步**：chart 把 ConfigMap 挂载到 `/etc/cert-sync/config.yaml`，控制器每 `SYNC_INTERVAL`（默认 60s）重读配置并调谐。Secret 名称由域名固定推导——点替换为横杠再加 `-tls`（`controllers/config.go:117` 的 `SecretName`，如 `example.com` → `example-com-tls`），因此 Secret 上不再写任何注解或标签。
+早期版本（chart 0.0.4/0.0.5）靠给 TLS Secret 打 `<prefix>/managed=true`、`<prefix>/domain=<域名>` 注解来被动触发；0.0.6 起整体改为**配置文件主动同步**：chart 把 ConfigMap 挂载到 `/etc/cert-sync/config.yaml`，控制器每 `SYNC_INTERVAL`（默认 60s）重读配置并调谐。Secret 名称由域名固定推导——点替换为横杠再加 `-tls`（`controllers/config.go:117` 的 `SecretName`，如 `example.com` → `example-com-tls`），因此 Secret 上不再写任何注解或标签。
 
-仓库面向维护这些集群的运维/开发人员。除 Go 代码外还包含一个可发布为 OCI chart 的 `chart/`：发 tag 时 `.github/workflows/build.yml` 构建多架构镜像（推 GHCR/DockerHub/ACR/Hi Registry）并 `helm package` + `helm push` 到多个 OCI registry。项目约定发版时 `chart/Chart.yaml` 的 version 与 `chart/values.yaml` 的 image.tag 必须和 git tag 一致（CI 会以 tag 兜底覆盖）。
+仓库面向需要自动分发 TLS 证书的运维/开发人员。除 Go 代码外还包含一个可发布为 OCI chart 的 `chart/`：发 tag 时 `.github/workflows/build.yml` 构建多架构镜像并 `helm package` + `helm push` 到多个公共 OCI registry（GHCR、DockerHub、ACR 等，端点与凭据见 build.yml 与仓库 Secrets）。项目约定发版时 `chart/Chart.yaml` 的 version 与 `chart/values.yaml` 的 image.tag 必须和 git tag 一致（CI 会以 tag 兜底覆盖）。
 <!-- /agentwiki:prose -->
 
 ## How to run it
@@ -47,7 +47,7 @@ helm template ./chart              # 本地渲染 chart
 - **证书服务器接口是固定拼路径**：`{CERT_SERVER}/{domain}/fullchain.pem` 与 `/privkey.pem`（`controllers/cert.go:72`、`:85`），非 200 或 PEM 解析失败都会判为该域名本轮失败。
 - **命名空间不存在不是错误**：控制器只 `Get` 目标 Namespace，不存在则告警跳过，**不会自动创建命名空间**（`controllers/syncer.go:78`）；RBAC 因此只需 secrets 读写 + namespaces 只读（`chart/templates/rbac.yaml`）。
 - **配置解析失败会沿用上一份有效配置**继续同步（`controllers/syncer.go:46`），不会因一次改错 ConfigMap 就停摆；但 `sync: []` 会通过解析、表示"什么都不同步"。
-- 发版必须三处版本一致：git tag `vX.Y.Z`、`chart/Chart.yaml` 的 `version`、`chart/values.yaml` 的 `image.tag`（CI 里也会用 tag 强制对齐）。chart 需手动随 tag 发布，使用方在自己的 HelmRelease 中 pin chart 版本。
+- 发版必须三处版本一致：git tag `vX.Y.Z`、`chart/Chart.yaml` 的 `version`、`chart/values.yaml` 的 `image.tag`（CI 里也会用 tag 强制对齐）。chart 随 tag 由 CI 自动打包推送到 OCI registry，使用方在自己的 HelmRelease 中 pin chart 版本。
 <!-- /agentwiki:prose -->
 
 ## Where things live

@@ -38,10 +38,10 @@ _No cross-module imports detected (single module or unsupported language)._
 ## Design decisions
 
 <!-- agentwiki:prose slot="key-decisions" status="fresh" facts-hash="16613fa62f2b" hint="Document notable design decisions and trade-offs visible in the code and git history (frameworks chosen, patterns used, things deliberately avoided)." -->
-从代码与 git 历史（2026-09-12 的 `2af52c7` 大改）可见的关键取舍：
+从代码与 git 历史（0.0.6 起配置驱动的大改）可见的关键取舍：
 
 - **放弃注解 watch，改为配置文件轮询**：旧版 `secret_controller.go`（已删除）watch 带注解的 Secret、靠事件触发，并维护一个 `sync.Map` 证书缓存 + 后台 refresher。新版只保留一个 manager `Runnable` 定时全量调谐。代价是最多有一个 `SYNC_INTERVAL`（60s）的延迟、且每轮对每个域名拉一次 fullchain；换来期望态集中在 Git（Helm values/ConfigMap）可见、无需给业务 Secret 打注解、也没有缓存一致性问题。
-- **Secret 名由域名确定，而非注解任意指定**：`SecretName`（`controllers/config.go:117`）固定为 `strings.ReplaceAll(domain,".","-")+"-tls"`。好处是配置与产物一一对应、不会重复创建；约束是必须用规则命名（如从历史名非规则命名改名为 `example-com-tls`）。
+- **Secret 名由域名确定，而非注解任意指定**：`SecretName`（`controllers/config.go:117`）固定为 `strings.ReplaceAll(domain,".","-")+"-tls"`。好处是配置与产物一一对应、不会重复创建；约束是必须按规则命名（如 `example.com` → `example-com-tls`），因此从旧版注解模式迁移时，历史上非规则命名的 Secret 需要改名才能对应上。
 - **最小权限、最小副作用**：目标命名空间不存在只告警跳过、不自动建 ns；配置删掉域名不 prune 已有 Secret（避免业务中断）；更新走"先比 fullchain 指纹、变了才拉私钥"以减少私钥传输；Secret 上不写注解标签，已存在的同名 Secret（含历史遗留注解）只更新数据。
 - **读走 APIReader、写走 client**：`main.go:38-40` 同时注入 `mgr.GetClient()` 与 `mgr.GetAPIReader()`，只读的 Get 走直连 API，不依赖 informer 缓存对所有 namespace Secret/Namespace 的 list-watch 权限与缓存填充。
 - **发布即多目标 OCI**：tag 触发的 workflow 同时推 GHCR/DockerHub/ACR/Hi 镜像并把 chart 推多个 OCI registry；CI 内用 sed 把 chart version/image.tag 强制对齐 git tag，避免三处版本漂移。这也是 build.yml 高频改动（hot files 9 次提交）的原因——期间踩过 ACR 不接受 buildx provenance 空清单（`provenance: false`）、QCR 权限不足等问题。
