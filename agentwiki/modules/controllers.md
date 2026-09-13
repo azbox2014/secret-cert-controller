@@ -34,10 +34,7 @@
 ## Recent activity
 
 <!-- agentwiki:facts id="activity" hash="11aa23dad181" volatile="true" -->
-- `controllers/cert.go` — 1 commits in 90d
-- `controllers/cert_test.go` — 1 commits in 90d
-- `controllers/config.go` — 1 commits in 90d
-- `controllers/config_test.go` — 1 commits in 90d
+- No commits touched this module in the last 90 days.
 <!-- /agentwiki:facts -->
 
 ## Notes for contributors
