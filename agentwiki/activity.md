@@ -2,32 +2,33 @@
 
 [← Quickstart](quickstart.md)
 
-<!-- agentwiki:facts id="summary" hash="f4c244e0ddda" -->
-- **Branch:** `main` at `fc438b2`
-- **Commits (last 90 days):** 15
+<!-- agentwiki:facts id="summary" hash="cd5dabcb7774" -->
+- **Branch:** `main` at `24415d5`
+- **Commits (last 90 days):** 16
 - **Active contributors (last 90 days):** 1
 <!-- /agentwiki:facts -->
 
 ## Current focus
 
-<!-- agentwiki:prose slot="current-focus" status="fresh" facts-hash="f4c244e0ddda" hint="Summarize what the team is currently working on, based on the hot files and recent commit messages below." -->
-近 90 天 11 个提交、1 名贡献者，工作几乎全部集中在 **2026-09-12 的一次大版本（v0.0.7）**，主线是把控制器从"Secret 注解被动触发"重写为"配置文件主动同步"，并打通多 registry 的镜像/chart 发布：
+<!-- agentwiki:prose slot="current-focus" status="fresh" facts-hash="cd5dabcb7774" hint="Summarize what the team is currently working on, based on the hot files and recent commit messages below." -->
+近 90 天 16 个提交、1 名贡献者，工作分两段：**2026-09-12 的大版本 v0.0.7**（把控制器从"Secret 注解被动触发"重写为"配置文件主动同步"，并打通多 registry 的镜像/chart 发布）与 **2026-09-13 的 agentwiki 接入**：
 
 - **核心重构**（0.0.6 起的配置驱动改造）：删除旧的 `controllers/secret_controller.go`（watch + sync.Map 缓存），新增 `controllers/config.go`（YAML 配置与域名→Secret 命名规则）、`cert.go`（拉取/指纹）、`syncer.go`（定时 Runnable），并补齐单元测试；chart 升到 0.0.6/0.0.7，新增 ConfigMap 与 `/etc/cert-sync` 挂载。
-- **发布链路密集调试**（build.yml 是最热文件，9 次提交）：chart 随 tag 自动 `helm push` 到多个公共 OCI 仓库；期间依次修了兼容 OCI 的 registry 拒绝 buildx provenance 空清单（加 `provenance: false`）、Helm 升 v4.3.0、手动触发产生非法 tag（给 build job 加 tag 条件）、以及个别 registry 的推送权限/路径问题。
+- **发布链路密集调试**（build.yml 是最热文件，9 次提交）：chart 随 tag 自动 `helm push` 到多个公共 OCI 仓库；期间依次修了兼容 OCI 的 registry 拒绝 buildx provenance 空清单（加 `provenance: false`）、Helm 升 v4.3.0、手动触发产生非法 tag（给 build job 加 tag 条件）、以及个别 registry 的推送权限/路径问题（`4e67c87`、`032f820`、`e06f05a`）。
+- **agentwiki 接入**（`3c78160` 起，2026-09-13）：初始化项目 wiki 与 `.cursor`/`.claude` 集成，随后多次精修 prose——重点是去除内部部署细节与失效提交引用（本仓为公开仓，prose 一律不写内部集群/域名），并在重写的 git 历史上刷新 facts（`f02e426`、`3f3cc15`、`fc438b2`、`24415d5`）。
 
 v0.0.7 镜像与 OCI chart 均已发布成功，使用方已把实例 pin 到 0.0.7 并改为 values 配置驱动。后续若再动，主要热点预计仍在 chart 版本对齐与证书配置，而非 Go 逻辑本身。
 <!-- /agentwiki:prose -->
 
 ## Hot files
 
-<!-- agentwiki:facts id="hot-files" hash="f4c244e0ddda" -->
+<!-- agentwiki:facts id="hot-files" hash="cd5dabcb7774" -->
 | File | Commits (90d) |
 | --- | --- |
 | `.github/workflows/build.yml` | 9 |
-| `agentwiki/activity.md` | 4 |
-| `agentwiki/quickstart.md` | 4 |
-| `agentwiki/.agentwiki.json` | 3 |
+| `agentwiki/activity.md` | 5 |
+| `agentwiki/quickstart.md` | 5 |
+| `agentwiki/.agentwiki.json` | 4 |
 | `chart/Chart.yaml` | 3 |
 | `chart/values.yaml` | 3 |
 | `agentwiki/modules/controllers.md` | 2 |
@@ -40,7 +41,8 @@ v0.0.7 镜像与 OCI chart 均已发布成功，使用方已把实例 pin 到 0.
 
 ## Recent commits
 
-<!-- agentwiki:facts id="recent-commits" hash="f4c244e0ddda" -->
+<!-- agentwiki:facts id="recent-commits" hash="cd5dabcb7774" -->
+- `24415d5` 2026-09-13 — wiki: 基于重写后的历史刷新 facts _(Liqiang Zhang)_
 - `fc438b2` 2026-09-13 — wiki: 基于重写后的历史刷新 facts _(Liqiang Zhang)_
 - `3f3cc15` 2026-09-13 — wiki: 基于重写后的历史刷新 facts _(Liqiang Zhang)_
 - `f02e426` 2026-09-13 — wiki: 精修 prose，去除内部部署细节与失效提交引用 _(Liqiang Zhang)_
@@ -50,5 +52,4 @@ v0.0.7 镜像与 OCI chart 均已发布成功，使用方已把实例 pin 到 0.
 - `032f820` 2026-09-12 — ci: QCR 镜像推送路径改为 osc-org 命名空间 _(Liqiang Zhang)_
 - `dcdd0e9` 2026-09-12 — release v0.0.7 _(Liqiang Zhang)_
 - `c1615af` 2026-09-12 — ci: Helm 升级到 v4.3.0 _(Liqiang Zhang)_
-- `fff3f24` 2026-09-12 — ci: 增加 QCR OCI 推送诊断（workflow_dispatch） _(Liqiang Zhang)_
 <!-- /agentwiki:facts -->

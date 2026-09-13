@@ -9,7 +9,7 @@
 - **Existing docs:** [README.md](../README.md)
 <!-- /agentwiki:facts -->
 <!-- agentwiki:facts id="git-state" hash="1d68f3cc2eb7" volatile="true" -->
-- **Git:** branch `main` at `fc438b2`, first commit 2026-04-23
+- **Git:** branch `main` at `24415d5`, first commit 2026-04-23
 <!-- /agentwiki:facts -->
 
 ## What is this?
